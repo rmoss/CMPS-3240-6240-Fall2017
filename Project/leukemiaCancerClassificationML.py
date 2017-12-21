@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pandas as pd
 import re
@@ -12,28 +14,38 @@ import matplotlib.pyplot as plt
 from ggplot import *
 import itertools
 
-# FUNCTION plot_confusion_matrix: for plotting the confusion matrices
-def plot_confusion_matrix(cm, title="Confusion Matrix"):
-    """
-    Plots the confusion matrix. Modified verison from 
-    http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
-    Inputs: 
-        cm: confusion matrix
-        title: Title of plot
-    """
-    classes=["AML", "ALL"]    
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.bone)
+# FUNCTION plot_confusion_matrix: This function prints and plots the confusion
+# matrix. Normalization can be applied by setting `normalize=True`. Version from
+# http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
+    plt.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=0)
+    plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
-    thresh = cm.mean()
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j]), 
+        plt.text(j, i, format(cm[i, j], fmt),
                  horizontalalignment="center",
-                 color="white" if cm[i, j] < thresh else "black")
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
 
 # FUNCTION basic_metrics: to calculate and print basic metrics for each model
 def basic_metrics(preds, y_test_labels):
@@ -45,9 +57,11 @@ def basic_metrics(preds, y_test_labels):
   print("Precision ALL: %.2f" %prec_dtc_all)
   print("Precision AML: %.2f \n" %prec_dtc_aml)
   cfmatrix = confusion_matrix(y_true=y_test_labels, y_pred=preds)
-  plt.subplot(121)
-  plot_confusion_matrix(cfmatrix, title="Confusion Matrix")
-  plt.show(block=True)
+  class_names = ['ALL', 'AML']
+  # Plot non-normalized confusion matrix
+  plt.figure()
+  plot_confusion_matrix(cfmatrix, classes=class_names,
+                        title='Confusion matrix')
 
 ################################################################################
 #***DATA READER*** Takes 3 CSV files and cleans data so that the data items are
@@ -176,12 +190,13 @@ rf_r = GridSearchCV(estimator=rf_model_r, param_grid=rf_param,
                               return_train_score=True)
 
 rf_r.fit(X_train, y_train)
-
 print("Best score:", rf_r.best_score_)
 print(rf_r.best_estimator_)
+
+# Use best estimator for model prediction and metrics
 rf_model = rf_r.best_estimator_
 y_pred_rf = rf_model.predict(X_test)
-print("Metrics for SVM: ")
+print("Metrics for Random Forest: ")
 basic_metrics(y_pred_rf, y_test)
 
 print("End of Program")
